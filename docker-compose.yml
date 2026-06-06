@@ -1,0 +1,37 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: company_member_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: company_member
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d company_member"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: company_member_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://app_user:${DB_PASSWORD}@db:5432/company_member
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
